@@ -91,6 +91,7 @@ services:
       QUEUE_URL: http://localstack:4566/000000000000/create_agreement
       QUEUE_NAME: create_agreement
       ENABLE_TEST_ENDPOINTS: true
+      JWT_ENABLED: ${JWT_ENABLED:-false}
     networks:
       - cdp-tenant
 
