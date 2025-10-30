@@ -21,35 +21,76 @@ import { createSqsClientPlugin } from '~/src/api/common/helpers/sqs-client.js'
 import { handleCreateAgreementEvent } from './common/helpers/sqs-message-processor/create-agreement.js'
 import { handleUpdateAgreementEvent } from './common/helpers/sqs-message-processor/update-agreement.js'
 import { returnDataHandlerPlugin } from './common/helpers/return-data-handler.js'
+// import { logger } from 'sqs-consumer/src/logger.js'
 
 const customGrantsUiJwtScheme = () => ({
   authenticate: async (request, h) => {
     const { agreementId } = request.params
+
+    // 1) Fetch agreement data by id when provided
     let agreementData = null
     if (agreementId) {
       agreementData = await getAgreementDataById(agreementId)
     }
 
-    const authResult = validateJwtAuthentication(
-      request.headers['x-encrypted-auth'],
-      agreementData,
-      request.logger
-    )
+    const isJwtEnabled = config.get('featureFlags.isJwtEnabled')
 
-    if (!authResult.valid) {
-      throw Boom.unauthorized(
-        'Not authorized to view/accept offer agreement document'
+    if (!agreementData && !isJwtEnabled) {
+      throw Boom.badRequest(
+        'Bad request, Neither JWT is enabled nor agreementId is provided'
       )
     }
-    // Getting Agreement of the farmer based on the SBI number as agreementId not provided
-    if (!agreementData && checkAuthSourceAndSbi(authResult)) {
-      agreementData = await getAgreementDataBySbi(authResult.sbi)
+
+    let source = null
+    let showAgreement = false
+    if (isJwtEnabled) {
+      const authToken = request.headers['x-encrypted-auth']
+
+      if (!authToken) {
+        throw Boom.badRequest(
+          'Bad request, JWT is enabled but no auth token provided in the header'
+        )
+      }
+
+      const authResult = validateJwtAuthentication(
+        authToken,
+        agreementData,
+        request.logger
+      )
+
+      request.logger.info(
+        `JWT Authentication Validation Start: ${JSON.stringify({
+          isJwtEnabled,
+          hasAuthToken: !!authToken,
+          authTokenLength: authToken ? authToken.length : 0,
+          agreementSbi: agreementData?.identifiers?.sbi,
+          agreementNumber: agreementData?.agreementNumber
+        })}`
+      )
+
+      // 3) If validation failed (falsy or valid:false) -> 401
+      if (!authResult || authResult.valid === false) {
+        throw Boom.unauthorized(
+          'Not authorized to view/accept offer agreement document'
+        )
+      }
+
+      // 4) If no agreement id was supplied but DEFRA farmer JWT contains an SBI, fetch by SBI
+      if (!agreementData && checkAuthSourceAndSbi(authResult)) {
+        agreementData = await getAgreementDataBySbi(authResult.sbi)
+      }
+
+      source = authResult.source
+      showAgreement = Boolean(authResult.valid)
+    } else {
+      request.logger.warn('JWT authentication is disabled via feature flag')
     }
 
     return h.authenticated({
       credentials: {
         agreementData,
-        source: authResult.source
+        source,
+        showAgreement
       }
     })
   }

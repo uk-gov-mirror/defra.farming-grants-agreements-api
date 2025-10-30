@@ -266,43 +266,22 @@ describe('jwt-auth', () => {
       config.get = jest.fn().mockReturnValue('mock-jwt-secret')
     })
 
-    test('should return {valid:true, source:null} when JWT feature flag is disabled', () => {
-      config.get = jest.fn((key) => {
-        if (key === 'featureFlags.isJwtEnabled') return false
-        if (key === 'jwtSecret') return 'mock-jwt-secret'
-        return 'mock-jwt-secret'
-      })
+    test('returns {valid:false, source:null, sbi:null} when no token is provided', () => {
+      const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn() }
 
-      const mockLogger = {
-        info: jest.fn(),
-        error: jest.fn(),
-        warn: jest.fn()
-      }
-
-      // Act
       const result = validateJwtAuthentication(
-        'any-token',
+        '',
         mockAgreementData,
         mockLogger
       )
 
-      expect(result).toEqual({
-        valid: true,
-        source: null,
-        sbi: null
-      })
-      expect(mockLogger.warn).toHaveBeenCalledWith(
-        'JWT authentication is disabled via feature flag'
+      expect(result).toEqual({ valid: false, source: null, sbi: null })
+      expect(mockLogger.info).toHaveBeenCalledWith(
+        'JWT payload extraction failed'
       )
     })
 
-    test('should validate and return object when feature flag enabled and JWT is valid (defra)', () => {
-      config.get = jest.fn((key) => {
-        if (key === 'featureFlags.isJwtEnabled') return true
-        if (key === 'jwtSecret') return 'mock-jwt-secret'
-        return 'mock-jwt-secret'
-      })
-
+    test('validates and returns object when JWT is valid (defra)', () => {
       const mockPayload = { sbi: '123456', source: 'defra' }
       const mockDecoded = {
         decoded: {
@@ -331,39 +310,7 @@ describe('jwt-auth', () => {
       })
     })
 
-    test('should throw 400 when feature flag is disabled and neither agreement data is provided', () => {
-      config.get = jest.fn((key) => {
-        if (key === 'featureFlags.isJwtEnabled') return false
-      })
-
-      const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn() }
-
-      expect(() => validateJwtAuthentication(null, null, mockLogger)).toThrow(
-        /Bad request, Neither JWT is enabled nor agreementId is provided/i
-      )
-    })
-
-    test('should throw 400 when feature flag is enabled and no token provided', () => {
-      config.get = jest.fn((key) => {
-        if (key === 'featureFlags.isJwtEnabled') return true
-      })
-
-      const mockLogger = { info: jest.fn(), error: jest.fn(), warn: jest.fn() }
-
-      expect(() =>
-        validateJwtAuthentication('', mockAgreementData, mockLogger)
-      ).toThrow(
-        /Bad request, JWT is enabled but no auth token provided in the header/i
-      )
-    })
-
-    test('should return {valid:true, source:"entra", sbi:<payload sbi>} for Entra users when feature flag is enabled', () => {
-      config.get = jest.fn((key) => {
-        if (key === 'featureFlags.isJwtEnabled') return true
-        if (key === 'jwtSecret') return 'mock-jwt-secret'
-        return 'mock-jwt-secret'
-      })
-
+    test('returns {valid:true, source:"entra", sbi:<payload sbi>} for Entra users', () => {
       const mockPayload = { sbi: 'different-sbi', source: 'entra' }
       const mockDecoded = { decoded: { payload: mockPayload } }
 

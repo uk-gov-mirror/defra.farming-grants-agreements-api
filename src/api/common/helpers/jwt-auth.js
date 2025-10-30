@@ -1,6 +1,6 @@
 import { config } from '~/src/config/index.js'
 import Jwt from '@hapi/jwt'
-import Boom from '@hapi/boom'
+// import Boom from '@hapi/boom'
 
 /**
  * Validates and verifies a JWT token against a secret to extract the payload
@@ -91,34 +91,34 @@ const verifyJwtPayload = (jwtPayload, agreementData) => {
  * @returns {{valid: boolean, source: null, sbi: undefined}} - true if JWT is disabled or JWT validation passes, false otherwise
  */
 const validateJwtAuthentication = (authToken, agreementData, logger) => {
-  const isJwtEnabled = config.get('featureFlags.isJwtEnabled')
+  // const isJwtEnabled = config.get('featureFlags.isJwtEnabled')
+  //
+  // if (!agreementData && !isJwtEnabled) {
+  //   throw Boom.badRequest(
+  //     'Bad request, Neither JWT is enabled nor agreementId is provided'
+  //   )
+  // }
+  //
+  // if (isJwtEnabled && !authToken) {
+  //   throw Boom.badRequest(
+  //     'Bad request, JWT is enabled but no auth token provided in the header'
+  //   )
+  // }
 
-  if (!agreementData && !isJwtEnabled) {
-    throw Boom.badRequest(
-      'Bad request, Neither JWT is enabled nor agreementId is provided'
-    )
-  }
-
-  if (isJwtEnabled && !authToken) {
-    throw Boom.badRequest(
-      'Bad request, JWT is enabled but no auth token provided in the header'
-    )
-  }
-
-  logger.info(
-    `JWT Authentication Validation Start: ${JSON.stringify({
-      isJwtEnabled,
-      hasAuthToken: !!authToken,
-      authTokenLength: authToken ? authToken.length : 0,
-      agreementSbi: agreementData?.identifiers?.sbi,
-      agreementNumber: agreementData?.agreementNumber
-    })}`
-  )
-
-  if (!isJwtEnabled) {
-    logger.warn('JWT authentication is disabled via feature flag')
-    return { valid: true, source: null, sbi: null }
-  }
+  // logger.info(
+  //   `JWT Authentication Validation Start: ${JSON.stringify({
+  //     isJwtEnabled,
+  //     hasAuthToken: !!authToken,
+  //     authTokenLength: authToken ? authToken.length : 0,
+  //     agreementSbi: agreementData?.identifiers?.sbi,
+  //     agreementNumber: agreementData?.agreementNumber
+  //   })}`
+  // )
+  //
+  // if (!isJwtEnabled) {
+  //   logger.warn('JWT authentication is disabled via feature flag')
+  //   return { valid: true, source: null, sbi: null }
+  // }
 
   logger.info('JWT authentication is enabled, proceeding with validation')
 
