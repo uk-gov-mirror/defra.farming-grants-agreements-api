@@ -6,7 +6,7 @@ services:
       - '4566:4566' # LocalStack Gateway
       - '4510-4559:4510-4559' # external services port range
     env_file:
-      - 'compose/aws.env'
+      - 'compose/aws_localhost.env'
     environment:
       DEBUG: ${DEBUG:-1}
       LS_LOG: WARN # Localstack DEBUG Level
@@ -17,28 +17,28 @@ services:
       - ./compose/start-localstack.sh:/etc/localstack/init/ready.d/start-localstack.sh
       - ./compose/monitor-sqs.sh:/etc/localstack/init/ready.d/monitor-sqs.sh
     healthcheck:
-      test: ['CMD', 'curl', 'localhost:4566']
+#      test: ['CMD', 'curl', 'localstack:4566']
+      test: ["CMD", "curl", "-sf", "http://localhost:4566/_localstack/health"]
       interval: 5s
       start_period: 5s
       retries: 3
-    networks:
-      - cdp-tenant
-
-  mongodb:
-    image: mongo:6.0.13
-    networks:
-      - cdp-tenant
-    ports:
-      - '27017:27017'
-    volumes:
-      - mongodb-data:/data/db
-    restart: always
-    healthcheck:
-      test:
-        ['CMD', 'mongosh', '--quiet', '--eval', 'db.runCommand({ ping: 1 }).ok']
-      interval: 5s
-      timeout: 5s
-      retries: 10
+    networks: [cdp-tenant]
+#
+#  mongodb:
+#    image: mongo:6.0.13
+#    networks:
+#      - cdp-tenant
+#    ports:
+#      - '27017:27017'
+#    volumes:
+#      - mongodb-data:/data/db
+#    restart: always
+#    healthcheck:
+#      test:
+#        ['CMD', 'mongosh', '--quiet', '--eval', 'db.runCommand({ ping: 1 }).ok']
+#      interval: 5s
+#      timeout: 5s
+#      retries: 10
 
   ################################################################################
 
@@ -49,8 +49,8 @@ services:
     depends_on:
       localstack:
         condition: service_healthy
-      mongodb:
-        condition: service_healthy
+#      mongodb:
+#        condition: service_healthy
     env_file:
       - 'compose/aws.env'
     environment:
@@ -70,17 +70,18 @@ services:
       ENABLE_PAYMENT_HUB: ${ENABLE_PAYMENT_HUB:-false}
       VIEW_AGREEMENT_URI: ${VIEW_AGREEMENT_URI:-http://localhost:3555}
       SNS_TOPIC_TYPE_AGREEMENT_STATUS_UPDATED: ${SNS_TOPIC_TYPE_AGREEMENT_STATUS_UPDATED:-io.onsite.agreement.status.updated}
-      SNS_TOPIC_ARN_AGREEMENT_STATUS_UPDATED": ${SNS_TOPIC_ARN_AGREEMENT_STATUS_UPDATED:-arn:aws:sns:eu-west-2:332499610595:agreement_status_updated}
+      SNS_TOPIC_ARN_AGREEMENT_STATUS_UPDATED: ${SNS_TOPIC_ARN_AGREEMENT_STATUS_UPDATED:-arn:aws:sns:eu-west-2:332499610595:agreement_status_updated}
       FILES_S3_BUCKET: ${FILES_S3_BUCKET:-farming-grants-agreements-pdf-bucket}
       FILES_S3_PREFIX: ${FILES_S3_PREFIX:-agreements}
-    networks:
-      - cdp-tenant
+    networks: [cdp-tenant]
 
 ################################################################################
 
-volumes:
-  mongodb-data:
+#volumes:
+#  mongodb-data:
 
 networks:
   cdp-tenant:
-    driver: bridge
+    external:
+      name: cdp-tenant
+#    driver: bridge
